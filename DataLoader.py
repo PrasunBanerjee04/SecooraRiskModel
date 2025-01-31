@@ -2,15 +2,15 @@ import pandas as pd
 
 class DataLoader:
 
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, url):
+        self.api_url = url
     
     @classmethod
-    def extract_data(data):
+    def extract_data(url):
         #take api data stream and convert to dataframe
 
 
-        return data
+        return url
     
     @classmethod
     def transform_data(data):
