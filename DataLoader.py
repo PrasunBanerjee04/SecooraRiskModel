@@ -26,6 +26,7 @@ class DataLoader:
         
         return data
     
+    @classmethod
     def load_data_to_parquet(data):
         #take pandas dataframe --> parquet file 
 
