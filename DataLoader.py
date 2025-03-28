@@ -35,14 +35,14 @@ class DataLoader:
     @classmethod
     def transform_data(cls, df):
         #take two column data and integrate advanced features
-        df["resultTime"] = pd.to_datetime(df["resultTime"])
-        df["year"] = df["resultTime"].dt.year
-        df["month"] = df["resultTime"].dt.month
-        df["day"] = df["resultTime"].dt.day
-        df["day_of_week"] = df["resultTime"].dt.dayofweek
-        df["hour"] = df["resultTime"].dt.hour
-        df["minute"] = df["resultTime"].dt.minute
-        df["second"] = df["resultTime"].dt.second
+        df["time"] = pd.to_datetime(df["time"])
+        df["year"] = df["time"].dt.year
+        df["month"] = df["time"].dt.month
+        df["day"] = df["time"].dt.day
+        df["day_of_week"] = df["time"].dt.dayofweek
+        df["hour"] = df["time"].dt.hour
+        df["minute"] = df["time"].dt.minute
+        df["second"] = df["time"].dt.second
 
         df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
         df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
