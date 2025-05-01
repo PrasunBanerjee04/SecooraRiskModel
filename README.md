@@ -3,7 +3,7 @@ This model is intended to serve as a flood-related financial risk forecasting sy
 
 ## Project Structure
 
-'''
+```
 SECOORARISKMODEL/
 │
 ├── airflow/
@@ -30,5 +30,5 @@ SECOORARISKMODEL/
 │
 └── docker-compose.yml
 
-'''
+```
 
