@@ -4,34 +4,46 @@ from datetime import *
 import numpy as np     
 
 class DataLoader:
-
-    def __init__(self, url):
-        self.api_url = url
     
     @classmethod
-    def extract_data(cls, numOfDays):
-        original_link = "https://api.sealevelsensors.org/v1.0/Datastreams(262)/Observations?$skip=0&$orderby=%40iot.id+desc&"
-        now = datetime.now(timezone.utc)
-        yest = (now - timedelta(days = numOfDays)).strftime('%Y-%m-%d')
-        formatted_time = now.strftime("T%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
-        now = now.strftime('%Y-%m-%d')
-        link = original_link + "$filter=phenomenonTime%20ge%20" + yest + formatted_time + "%20and%20phenomenonTime%20le%20" + now + formatted_time
-        metadata = r.get(link)
-        data = metadata.json()
-        adict = {"resultTime":[], "reading":[]}
-        while "@iot.nextLink" in data:
-            for dictionary in data["value"]:
-                rTime = dictionary["resultTime"]
-                result = dictionary["result"]
-                adict["resultTime"].append(rTime)
-                adict["reading"].append(result)
-            link = data["@iot.nextLink"]
-            metadata = r.get(link)
-            data = metadata.json()
-        df = pd.DataFrame(adict)
+    def extract_data(cls, start_date: str, end_date: str) -> pd.DataFrame:
+        """
+        Fetch sensor data from the SECOORA API between two ISO 8601 date strings.
+        
+        Args:
+            start_date (str): e.g. "2023-05-01T00:00:00Z"
+            end_date (str): e.g. "2024-05-01T00:00:00Z"
+
+        Returns:
+            pd.DataFrame with resultTime and reading columns, sorted by resultTime descending.
+        """
+
+        base_url = "https://api.sealevelsensors.org/v1.0/Datastreams(262)/Observations"
+        url = (
+            f"{base_url}"
+            f"?$orderby=phenomenonTime%20desc"
+            f"&$filter=phenomenonTime%20ge%20{start_date}"
+            f"%20and%20phenomenonTime%20le%20{end_date}"
+        )
+
+        all_results = {"time": [], "result": []}
+
+        while url:
+            response = r.get(url)
+            if response.status_code != 200: 
+                raise Exception(f"Request failed: {response.status_code}")
+            data = response.json()
+
+            for obs in data.get("value", []):
+                all_results["time"].append(obs["phenomenonTime"])
+                all_results["result"].append(obs["result"])
+            url = data.get("@iot.nextLink", None)
+        
+        df = pd.DataFrame(all_results)
+        df["time"] = pd.to_datetime(df["time"])
+        df = df.sort_values("time", ascending=False).reset_index(drop=True)
         return df
 
-    
     @classmethod
     def transform_data(cls, df):
         #take two column data and integrate advanced features
@@ -89,16 +101,17 @@ class DataLoader:
         df = df[columns]
         return df
 
-    
     @classmethod
     def load_data_to_csv(cls, df, path):
         #take pandas dataframe --> csv file 
         df.to_csv(path, index=False)
-        
-        
+    
     
     @classmethod
     def load_data_to_parquet(cls, df, path):
         #take pandas dataframe --> parquet file 
         df.to_parquet(path, index=False)  # 'path' should be a string with the full file path
         
+if __name__ == "__main__":
+    start_date = "2024-01-01T00:00:00Z"
+    end_date   = "2025-01-01T00:00:00Z"

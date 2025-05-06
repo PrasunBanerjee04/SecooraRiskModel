@@ -4,7 +4,7 @@ This model is intended to serve as a flood-related financial risk forecasting sy
 ## Project Structure
 
 ```
-SECOORARISKMODEL/
+SecooraRiskModel/
 │
 ├── airflow/
 │   ├── dags/
