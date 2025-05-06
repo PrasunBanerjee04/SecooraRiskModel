@@ -111,7 +111,15 @@ class DataLoader:
     def load_data_to_parquet(cls, df, path):
         #take pandas dataframe --> parquet file 
         df.to_parquet(path, index=False)  # 'path' should be a string with the full file path
+
         
 if __name__ == "__main__":
     start_date = "2024-01-01T00:00:00Z"
     end_date   = "2025-01-01T00:00:00Z"
+    df = DataLoader.extract_data(start_date, end_date)
+    df = DataLoader.transform_data(df)
+    df = DataLoader.order_df(df)
+
+    #take pandas dataframe --> csv file 
+    DataLoader.load_data_to_csv(df, "data/historical_data.csv")
+    
