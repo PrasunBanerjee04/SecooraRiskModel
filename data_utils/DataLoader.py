@@ -1,23 +1,14 @@
 import pandas as pd
 import requests as r
-from datetime import *   
-import numpy as np     
+from datetime import datetime, timedelta 
+import numpy as np  
+from concurrent.futures import ThreadPoolExecutor
+from dateutil.parser import isoparse
 
 class DataLoader:
     
     @classmethod
     def extract_data(cls, start_date: str, end_date: str) -> pd.DataFrame:
-        """
-        Fetch sensor data from the SECOORA API between two ISO 8601 date strings.
-        
-        Args:
-            start_date (str): e.g. "2023-05-01T00:00:00Z"
-            end_date (str): e.g. "2024-05-01T00:00:00Z"
-
-        Returns:
-            pd.DataFrame with resultTime and reading columns, sorted by resultTime descending.
-        """
-
         base_url = "https://api.sealevelsensors.org/v1.0/Datastreams(262)/Observations"
         url = (
             f"{base_url}"
@@ -27,22 +18,47 @@ class DataLoader:
         )
 
         all_results = {"time": [], "result": []}
-
         while url:
             response = r.get(url)
-            if response.status_code != 200: 
+            if response.status_code != 200:
                 raise Exception(f"Request failed: {response.status_code}")
             data = response.json()
-
             for obs in data.get("value", []):
                 all_results["time"].append(obs["phenomenonTime"])
                 all_results["result"].append(obs["result"])
-            url = data.get("@iot.nextLink", None)
-        
+            url = data.get("@iot.nextLink")
+
         df = pd.DataFrame(all_results)
-        df["time"] = pd.to_datetime(df["time"])
+        df["time"] = pd.to_datetime(df["time"], utc=True, infer_datetime_format=True, errors="coerce")
+        df = df.dropna(subset=["time"])
         df = df.sort_values("time", ascending=False).reset_index(drop=True)
         return df
+
+    @classmethod
+    def extract_data_concurrent(cls, start_date: str, end_date: str, num_workers: int = 8) -> pd.DataFrame:
+        dt_start = isoparse(start_date)
+        dt_end = isoparse(end_date)
+
+        total_seconds = (dt_end - dt_start).total_seconds()
+        chunk = total_seconds / num_workers
+
+        ranges = []
+        fmt = "%Y-%m-%dT%H:%M:%SZ"
+        for i in range(num_workers):
+            sub_s = dt_start + timedelta(seconds=chunk * i)
+            sub_e = (dt_start + timedelta(seconds=chunk * (i + 1))) if i < num_workers - 1 else dt_end
+            ranges.append((sub_s.strftime(fmt), sub_e.strftime(fmt)))
+
+        def fetch(rng):
+            return cls.extract_data(rng[0], rng[1])
+
+        with ThreadPoolExecutor(max_workers=num_workers) as exe:
+            dfs = list(exe.map(fetch, ranges))
+
+        df = pd.concat(dfs, ignore_index=True)
+        df = df.sort_values("time", ascending=False).reset_index(drop=True)
+        return df
+
 
     @classmethod
     def transform_data(cls, df):
