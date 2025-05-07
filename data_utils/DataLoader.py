@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import numpy as np  
 from concurrent.futures import ThreadPoolExecutor
 from dateutil.parser import isoparse
+from tqdm.auto import tqdm
 
 class DataLoader:
     
@@ -42,8 +43,8 @@ class DataLoader:
         total_seconds = (dt_end - dt_start).total_seconds()
         chunk = total_seconds / num_workers
 
-        ranges = []
         fmt = "%Y-%m-%dT%H:%M:%SZ"
+        ranges = []
         for i in range(num_workers):
             sub_s = dt_start + timedelta(seconds=chunk * i)
             sub_e = (dt_start + timedelta(seconds=chunk * (i + 1))) if i < num_workers - 1 else dt_end
@@ -52,8 +53,10 @@ class DataLoader:
         def fetch(rng):
             return cls.extract_data(rng[0], rng[1])
 
+        dfs = []
         with ThreadPoolExecutor(max_workers=num_workers) as exe:
-            dfs = list(exe.map(fetch, ranges))
+            for df_chunk in tqdm(exe.map(fetch, ranges), total=len(ranges), desc="Fetching data"):
+                dfs.append(df_chunk)
 
         df = pd.concat(dfs, ignore_index=True)
         df = df.sort_values("time", ascending=False).reset_index(drop=True)
@@ -130,12 +133,16 @@ class DataLoader:
 
         
 if __name__ == "__main__":
-    start_date = "2024-01-01T00:00:00Z"
-    end_date   = "2025-01-01T00:00:00Z"
-    df = DataLoader.extract_data(start_date, end_date)
-    df = DataLoader.transform_data(df)
-    df = DataLoader.order_df(df)
+
+    start_date = "2022-01-01T00:00:00Z"
+    end_date   = "2022-06-30T00:00:00Z"
+
+    df = DataLoader.extract_data_concurrent(
+        start_date=start_date,
+        end_date=end_date,
+        num_workers=10
+    )
 
     #take pandas dataframe --> csv file 
-    DataLoader.load_data_to_csv(df, "data/historical_data.csv")
+    DataLoader.load_data_to_csv(df, "../data/historical_data_2022_1.csv")
     
