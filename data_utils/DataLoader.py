@@ -134,8 +134,8 @@ class DataLoader:
         
 if __name__ == "__main__":
 
-    start_date = "2022-01-01T00:00:00Z"
-    end_date   = "2022-06-30T00:00:00Z"
+    start_date = "2024-01-01T00:00:00Z"
+    end_date   = "2024-12-31T00:00:00Z"
 
     df = DataLoader.extract_data_concurrent(
         start_date=start_date,
@@ -144,5 +144,5 @@ if __name__ == "__main__":
     )
 
     #take pandas dataframe --> csv file 
-    DataLoader.load_data_to_csv(df, "../data/historical_data_2022_1.csv")
+    DataLoader.load_data_to_csv(df, "data/historical_data_2024.csv")
     
