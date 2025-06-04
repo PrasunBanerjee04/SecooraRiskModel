@@ -1,0 +1,4 @@
+apache-airflow>=2.5.0
+pandas
+requests
+scikit-learn
