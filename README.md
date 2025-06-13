@@ -36,5 +36,5 @@ SecooraRiskModel/
 
 ```
 
-![Flood Risk Forecast Plot](resources/output.png)
+![Flood Risk Forecast Plot](resources/forecast.png)
 
