@@ -1,2 +1,12 @@
+# Bytecode cache
 __pycache__/
 *.py[cod]
+
+# Data files
+data/*.csv
+
+# Saved models
+model/model/timesfm_pretrained/
+model/model/*.pt
+model/model/*.pkl
+model/model/*.safetensors

@@ -116,7 +116,7 @@ def load_to_csv(**context):
 with DAG(
     dag_id="secoora_risk_model_pipeline",
     default_args=default_args,
-    description="ETL pipeline: extract water level → predict next value, save to CSV",
+    description="ETL pipeline: extract water level, predict next value, save to CSV",
     schedule_interval="@hourly",
     catchup=False,
     max_active_runs=1,
