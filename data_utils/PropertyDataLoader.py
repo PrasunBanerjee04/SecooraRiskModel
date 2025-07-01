@@ -81,10 +81,10 @@ class PropertyDataLoader:
         df.to_parquet(path, index=False)  # 'path' should be a string with the full file path
     
 def main():
-    csv_path = ["Tybee-Parcels-2023(in).csv"]
+    csv_path = ["data/Tybee-Parcels-2023(in).csv"]
     cleaned_df = PropertyDataLoader.clean_csv_list(csv_path)
     ordered_df = PropertyDataLoader.order_df(cleaned_df)
-    PropertyDataLoader.load_data_to_csv(ordered_df, "preprocessed_parcels_data.csv")
+    PropertyDataLoader.load_data_to_csv(ordered_df, "data/preprocessed_parcels_data.csv")
     print(ordered_df.head())
 
 if __name__ == "__main__":
