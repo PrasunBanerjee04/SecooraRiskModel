@@ -80,7 +80,7 @@ class PropertyDataLoader:
     @classmethod
     def load_data_to_parquet(cls, df, path):
         #take pandas dataframe --> parquet file 
-        df.to_parquet(path, index=False)  # 'path' should be a string with the full file path
+        df.to_parquet(path, index=False)
     
 def main():
     csv_list = ["data/Tybee-Parcels-2023(in).csv", "data/Tybee-Parcels-2020.csv", "data/Tybee-Parcels-2021.csv", "data/Tybee-Parcels-2022.csv"]
