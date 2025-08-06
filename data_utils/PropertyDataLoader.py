@@ -1,59 +1,61 @@
 import pandas as pd
-import logging
 from typing import List
 
-logging.basicConfig(
-    filename="property_data_loader.log",
-    level=logging.INFO,
-    format="%(asctime)s — %(levelname)s — %(message)s"
-)
-
 class PropertyDataLoader:
-    ADDRESS = [
+    ADDRESS_COLUMNS = [
+        "PropAddress_Full", "PropAddress_Num", "PropAddress_PreDir", "PropAddress_StreetName",
+        "PropAddress_StreetType", "PropAddress_PostDir", "PropAddress_UnitType", "PropAddress_UnitNum",
+        "PropAddress_City", "PropAddress_State", "PropAddress_Zip",
         "PropAddres", "PropAddr_1", "PropAddr_2", "PropAddr_3", "PropAddr_5",
         "PropAddr_6", "PropAddr_7", "PropAddr_8", "PropAddr_9", "PropAddr10"
     ]
 
-    REQUIRED_COLUMNS = {
-        "Sale_Price": "Sale Price",
+    ALTERNATE_NAMES = {
         "FairMarket": "Fair Market Value",
+        "FairMarketValue": "Fair Market Value",
+        "Sale_Price": "Sale Price",
         "Acres": "Acres",
-        "YearBuilt": "Year Built"
+        "YearBuilt": "Year Built",
+        "FMV_Land": "FMV Land",
+        "FMV_Building": "FMV Building"
     }
+
+    REQUIRED_COLUMNS = ["Fair Market Value", "Sale Price", "Acres", "Year Built"]
 
     @classmethod
     def clean_csv_list(cls, csv_paths: List[str]) -> pd.DataFrame:
         all_csv_files = []
         for path in csv_paths:
             try:
-                dataframe = pd.read_csv(path)
+                df = pd.read_csv(path)
             except Exception as e:
-                logging.error(f"Error: {e}")
                 continue
-            address = []
-            for idx in range(len(dataframe)):
+            df.columns = [col.strip() for col in df.columns]
+            address_parts = []
+            for idx in range(len(df)):
                 parts = []
-                for col in cls.ADDRESS:
-                    value = dataframe.at[idx, col]
-                    if pd.notnull(value):
-                        parts.append(str(value).strip())
-                full_address = ' '.join(parts)
-                address.append(full_address)
-            dataframe["Property Address"] = address
-            required_cols = list(cls.REQUIRED_COLUMNS.keys()) + ["Property Address"]
-            renamed_cols = cls.REQUIRED_COLUMNS.copy()
-            renamed_cols["Property Address"] = "Property Address"
-            df_subset = dataframe[required_cols].copy()
-            df_subset.rename(columns=renamed_cols, inplace=True)
+                for col in cls.ADDRESS_COLUMNS:
+                    if col in df.columns and pd.notnull(df.at[idx, col]):
+                        parts.append(str(df.at[idx, col]).strip())
+                address_parts.append(' '.join(parts))
+            df["Property Address"] = address_parts
+            for original, standard in cls.ALTERNATE_NAMES.items():
+                if original in df.columns:
+                    df.rename(columns={original: standard}, inplace=True)
+            missing_cols = [col for col in cls.REQUIRED_COLUMNS if col not in df.columns]
+            if missing_cols:
+                continue
+            subset_cols = cls.REQUIRED_COLUMNS + ["Property Address"]
+            df_subset = df[subset_cols].copy()
+
             for idx, row in df_subset.iterrows():
                 if row.isnull().any():
                     missing_fields = row.index[row.isnull()].tolist()
-                    logging.info(f"{path} - Row {idx} - Missing Fields: {missing_fields} — Row Data: {row.to_dict()}")
             cleaned = df_subset.dropna()
             all_csv_files.append(cleaned)
+
         combined_dataframe = pd.concat(all_csv_files, ignore_index=True)
         final_dataframe = combined_dataframe.drop_duplicates().reset_index(drop=True)
-        logging.info(f"Final Cleaned Dataset: {len(final_dataframe)} Rows")
         return final_dataframe
     
     @classmethod
@@ -81,10 +83,10 @@ class PropertyDataLoader:
         df.to_parquet(path, index=False)  # 'path' should be a string with the full file path
     
 def main():
-    csv_path = ["data/Tybee-Parcels-2023(in).csv"]
-    cleaned_df = PropertyDataLoader.clean_csv_list(csv_path)
+    csv_list = ["Tybee-Parcels-2023(in).csv", "Tybee-Parcels-2020.csv", "Tybee-Parcels-2021.csv", "Tybee-Parcels-2022.csv"]
+    cleaned_df = PropertyDataLoader.clean_csv_list(csv_list)
     ordered_df = PropertyDataLoader.order_df(cleaned_df)
-    PropertyDataLoader.load_data_to_csv(ordered_df, "data/preprocessed_parcels_data.csv")
+    PropertyDataLoader.load_data_to_csv(ordered_df, "preprocessed_parcels_data.csv")
     print(ordered_df.head())
 
 if __name__ == "__main__":
