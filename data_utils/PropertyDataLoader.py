@@ -33,10 +33,8 @@ class PropertyDataLoader:
         dfs = []
         for p in paths:
             try:
-                # --- 2. Extract year from path ---
                 match = re.search(r'(\d{4})', p)
                 year = int(match.group(1)) if match else pd.NA
-                # -----------------------------------
                 
                 df = pd.read_csv(p)
                 df.columns = df.columns.str.strip()
@@ -46,7 +44,6 @@ class PropertyDataLoader:
             
             # --- Add year to dataframe ---
             df['Year'] = year
-            # -----------------------------
 
             name = None
             for c in cls.STREET_NAME:
@@ -102,7 +99,7 @@ class PropertyDataLoader:
                 use_cols.append(c)
             use_cols.append("Property Address")
             use_cols.append("Street Name")
-            use_cols.append("Year")  # <-- 2. Add 'Year' to columns list
+            use_cols.append("Year") 
             out = df[use_cols].dropna()
             dfs.append(out)
             
@@ -112,7 +109,7 @@ class PropertyDataLoader:
                 cols.append(c)
             cols.append("Property Address")
             cols.append("Street Name")
-            cols.append("Year")  # <-- 2. Add 'Year' to empty df columns
+            cols.append("Year") 
             return pd.DataFrame(columns=cols)
             
         combined = pd.concat(dfs, ignore_index=True)
@@ -123,17 +120,13 @@ class PropertyDataLoader:
 
     @classmethod
     def order_df(cls, df: pd.DataFrame) -> pd.DataFrame:
-        # --- 3. Add 'Year' to the ordered columns list ---
         ordered_cols = ["Property Address", "Street Name", "Year"] + cls.REQUIRED_COLUMNS
-        
-        # Filter for columns that actually exist in the DataFrame
         final_ordered_cols = [col for col in ordered_cols if col in df.columns]
         return df.loc[:, final_ordered_cols]
 
 
     @classmethod
     def add_coordinates(cls, df: pd.DataFrame, num_workers: int = 10) -> pd.DataFrame:
-        # Added a check for an empty DataFrame
         if df.empty:
             df["Latitude"] = []
             df["Longitude"] = []
@@ -151,7 +144,6 @@ class PropertyDataLoader:
         streets = df["Street Name"].tolist()
         results = [None] * len(streets)
         
-        # Added a check for empty streets list
         if not streets:
             df["Latitude"] = []
             df["Longitude"] = []
@@ -165,8 +157,7 @@ class PropertyDataLoader:
                     results[idx] = future.result()
                 except Exception:
                     results[idx] = (None, None)
-        
-        # Handle case where results might be empty or malformed
+
         if not results:
              df["Latitude"] = []
              df["Longitude"] = []
