@@ -22,8 +22,8 @@ def visualize_time_series(df, X = None, title = "Time Series Plot"):
     plt.tight_layout()
     plt.show()
 
-def visualize_histogram(series, title="Histogram"):
-    series.plot(kind='hist', bins=500)
+def visualize_histogram(series, bins=500, title="Histogram"):
+    series.plot(kind='hist', bins=bins, title=title)
     plt.show()
 
 def plot_outliers(df, threshold, column):
