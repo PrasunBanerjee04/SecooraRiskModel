@@ -2,6 +2,7 @@ import pandas as pd
 from typing import List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from geopy.geocoders import ArcGIS
+import re 
 
 class PropertyDataLoader:
     STREET_NAME = ["PropAddress_StreetName", "PropAddr_2"]
@@ -32,10 +33,21 @@ class PropertyDataLoader:
         dfs = []
         for p in paths:
             try:
+                # --- 2. Extract year from path ---
+                match = re.search(r'(\d{4})', p)
+                year = int(match.group(1)) if match else pd.NA
+                # -----------------------------------
+                
                 df = pd.read_csv(p)
                 df.columns = df.columns.str.strip()
-            except:
+            except Exception as e:
+                print(f"Failed to read {p}: {e}")
                 continue
+            
+            # --- Add year to dataframe ---
+            df['Year'] = year
+            # -----------------------------
+
             name = None
             for c in cls.STREET_NAME:
                 if c in df.columns:
@@ -50,15 +62,15 @@ class PropertyDataLoader:
                 continue
             streets = []
             for _, row in df.iterrows():
-                name = row.get(name, "")
-                type = row.get(stype, "")
-                if isinstance(name, str):
-                    name = name.strip()
-                    if isinstance(type, str):
-                        type = type.strip()
+                name_val = row.get(name, "")
+                type_val = row.get(stype, "")
+                if isinstance(name_val, str):
+                    name_val = name_val.strip()
+                    if isinstance(type_val, str):
+                        type_val = type_val.strip()
                     else:
-                        type = ""
-                    streets.append(f"{name} {type}".strip())
+                        type_val = ""
+                    streets.append(f"{name_val} {type_val}".strip())
                 else:
                     streets.append("")
             df["Street Name"] = streets
@@ -90,15 +102,19 @@ class PropertyDataLoader:
                 use_cols.append(c)
             use_cols.append("Property Address")
             use_cols.append("Street Name")
+            use_cols.append("Year")  # <-- 2. Add 'Year' to columns list
             out = df[use_cols].dropna()
             dfs.append(out)
+            
         if not dfs:
             cols = []
             for c in cls.REQUIRED_COLUMNS:
                 cols.append(c)
             cols.append("Property Address")
             cols.append("Street Name")
+            cols.append("Year")  # <-- 2. Add 'Year' to empty df columns
             return pd.DataFrame(columns=cols)
+            
         combined = pd.concat(dfs, ignore_index=True)
         combined = combined.drop_duplicates()
         combined = combined.reset_index(drop=True)
@@ -107,12 +123,22 @@ class PropertyDataLoader:
 
     @classmethod
     def order_df(cls, df: pd.DataFrame) -> pd.DataFrame:
-        ordered_cols = ["Property Address", "Street Name"] + cls.REQUIRED_COLUMNS
-        return df.loc[:, ordered_cols]
+        # --- 3. Add 'Year' to the ordered columns list ---
+        ordered_cols = ["Property Address", "Street Name", "Year"] + cls.REQUIRED_COLUMNS
+        
+        # Filter for columns that actually exist in the DataFrame
+        final_ordered_cols = [col for col in ordered_cols if col in df.columns]
+        return df.loc[:, final_ordered_cols]
 
 
     @classmethod
     def add_coordinates(cls, df: pd.DataFrame, num_workers: int = 10) -> pd.DataFrame:
+        # Added a check for an empty DataFrame
+        if df.empty:
+            df["Latitude"] = []
+            df["Longitude"] = []
+            return df
+            
         cache = {}
         def geocode(street):
             if street in cache:
@@ -121,8 +147,16 @@ class PropertyDataLoader:
             result = (loc.latitude, loc.longitude) if loc else (None, None)
             cache[street] = result
             return result
+            
         streets = df["Street Name"].tolist()
         results = [None] * len(streets)
+        
+        # Added a check for empty streets list
+        if not streets:
+            df["Latitude"] = []
+            df["Longitude"] = []
+            return df
+
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             futures = {executor.submit(geocode, s): idx for idx, s in enumerate(streets)}
             for future in as_completed(futures):
@@ -131,6 +165,13 @@ class PropertyDataLoader:
                     results[idx] = future.result()
                 except Exception:
                     results[idx] = (None, None)
+        
+        # Handle case where results might be empty or malformed
+        if not results:
+             df["Latitude"] = []
+             df["Longitude"] = []
+             return df
+
         latitude, longitude = zip(*results)
         df["Latitude"] = latitude
         df["Longitude"] = longitude
@@ -143,12 +184,26 @@ class PropertyDataLoader:
 
 
 def main():
-    paths = ["data\Tybee-Parcels-2023(in).csv", "data\Tybee-Parcels-2020.csv", "data\Tybee-Parcels-2021.csv", "data\Tybee-Parcels-2022.csv"]
+    paths = [
+        "../data/parcels/Tybee-Parcels-2023.csv", 
+        "../data/parcels/Tybee-Parcels-2020.csv", 
+        "../data/parcels/Tybee-Parcels-2021.csv", 
+        "../data/parcels/Tybee-Parcels-2022.csv"
+    ]
+    
     df = PropertyDataLoader.clean_csv_list(paths)
+    if df.empty:
+        print("No data was loaded. Please check your file paths.")
+        return
+
     df = PropertyDataLoader.order_df(df)
     df = PropertyDataLoader.add_coordinates(df, num_workers=10)
-    df.drop(columns=['Street Name'], inplace=True)
+    
+    if 'Street Name' in df.columns:
+        df.drop(columns=['Street Name'], inplace=True)
+        
     PropertyDataLoader.load_data_to_csv(df, "preprocessed_parcels_data.csv")
+    print("Data processing complete. Output saved to 'preprocessed_parcels_data.csv'")
     print(df.head())
 
 
