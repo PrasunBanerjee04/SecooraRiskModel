@@ -30,10 +30,10 @@ def concat_data(df_list):
     full_df = pd.concat(reversed_df_list, ignore_index=True)
     return full_df
 
-def remove_outliers(df, column, threshold):
-    mask = df[column].abs() < threshold
-    df = df.loc[mask].copy()
-    return df
+def remove_outliers_by_range(df, column, plausible_min, plausible_max):
+    mask = (df[column] > plausible_min) & (df[column] < plausible_max)
+    df_cleaned = df.loc[mask].copy()
+    return df_cleaned
 
 def take_dataframe_subset(df, start=None, end=None):
     return df.loc[start:end]
